@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备日志查询系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-house-door"></i> 智能家居设备管理系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">设备管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="logs.html">日志查询</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 统计图表区域 -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart"></i> 日志统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <canvas id="typeChart"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <canvas id="hourlyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 查询区域 -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-journal-text"></i> 日志查询</h5>
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#logModal" onclick="openAddLogModal()">
+                            <i class="bi bi-plus-circle"></i> 添加日志
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <!-- 查询条件 -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="logDeviceId" placeholder="设备ID">
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" id="logType">
+                                    <option value="">所有类型</option>
+                                    <option value="info">信息</option>
+                                    <option value="warning">警告</option>
+                                    <option value="error">错误</option>
+                                    <option value="status_change">状态变更</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="datetime-local" class="form-control" id="startTime">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="datetime-local" class="form-control" id="endTime">
+                            </div>
+                            <div class="col-md-3">
+                                <div class="btn-group w-100">
+                                    <button class="btn btn-primary" onclick="loadLogs()">
+                                        <i class="bi bi-search"></i> 查询
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="resetFilters()">
+                                        <i class="bi bi-arrow-clockwise"></i> 重置
+                                    </button>
+                                    <button class="btn btn-info" onclick="loadLogStats()">
+                                        <i class="bi bi-graph-up"></i> 统计
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 全文搜索 -->
+                        <div class="row mb-3">
+                            <div class="col-md-10">
+                                <input type="text" class="form-control" id="searchKeyword" placeholder="全文搜索日志内容...">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-primary w-100" onclick="searchLogs()">
+                                    <i class="bi bi-search"></i> 搜索
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 日志列表 -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>设备ID</th>
+                                        <th>类型</th>
+                                        <th>消息</th>
+                                        <th>详情</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 分页 -->
+                        <nav>
+                            <ul class="pagination justify-content-center" id="pagination">
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加日志模态框 -->
+    <div class="modal fade" id="logModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加日志</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="logForm">
+                        <div class="mb-3">
+                            <label class="form-label">设备ID *</label>
+                            <input type="text" class="form-control" id="logDeviceIdInput" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">日志类型 *</label>
+                            <select class="form-select" id="logTypeInput" required>
+                                <option value="info">信息</option>
+                                <option value="warning">警告</option>
+                                <option value="error">错误</option>
+                                <option value="status_change">状态变更</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">消息 *</label>
+                            <input type="text" class="form-control" id="logMessage" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">详细信息 (JSON格式)</label>
+                            <textarea class="form-control" id="logDetails" rows="3" placeholder='{"temperature": 25, "humidity": 60}'></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveLog()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/logs.js"></script>
+</body>
+</html>
+

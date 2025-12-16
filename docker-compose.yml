@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: smart_home_mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: smart_home
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./data/init_db.js:/docker-entrypoint-initdb.d/init_db.js:ro
+    networks:
+      - smart_home_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart_home_backend
+    restart: always
+    ports:
+      - "5001:5000"
+    environment:
+      MONGO_HOST: mongodb
+      MONGO_PORT: 27017
+      MONGO_USERNAME: admin
+      MONGO_PASSWORD: admin123
+      MONGO_DATABASE: smart_home
+      FLASK_ENV: production
+    depends_on:
+      - mongodb
+    volumes:
+      - ./code/backend:/app
+      - ./code/frontend:/app/frontend
+      - ./data:/app/data
+      - ./code/scripts:/app/scripts
+    networks:
+      - smart_home_network
+
+volumes:
+  mongodb_data:
+  mongodb_config:
+
+networks:
+  smart_home_network:
+    driver: bridge
+

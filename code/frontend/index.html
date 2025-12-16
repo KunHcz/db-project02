@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能家居设备管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-house-door"></i> 智能家居设备管理系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="index.html">设备管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="logs.html">日志查询</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-device-hdd"></i> 设备列表</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick="loadDeviceStats()">
+                                <i class="bi bi-graph-up"></i> 统计信息
+                            </button>
+                            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#deviceModal" onclick="openAddModal()">
+                                <i class="bi bi-plus-circle"></i> 添加设备
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- 筛选栏 -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterType" onchange="loadDevices()">
+                                    <option value="">所有类型</option>
+                                    <option value="智能灯">智能灯</option>
+                                    <option value="温湿度传感器">温湿度传感器</option>
+                                    <option value="摄像头">摄像头</option>
+                                    <option value="智能门锁">智能门锁</option>
+                                    <option value="烟雾报警器">烟雾报警器</option>
+                                    <option value="智能插座">智能插座</option>
+                                    <option value="运动传感器">运动传感器</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterStatus" onchange="loadDevices()">
+                                    <option value="">所有状态</option>
+                                    <option value="online">在线</option>
+                                    <option value="offline">离线</option>
+                                    <option value="maintenance">维护中</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="searchInput" placeholder="搜索设备名称或ID..." onkeypress="if(event.key==='Enter') loadDevices()">
+                                    <button class="btn btn-outline-secondary" onclick="loadDevices()">
+                                        <i class="bi bi-search"></i> 搜索
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 附近设备查询 -->
+                        <div class="card mb-3 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">地理位置查询 - 查找附近设备</h6>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <input type="number" class="form-control" id="longitude" placeholder="经度" step="0.000001">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="number" class="form-control" id="latitude" placeholder="纬度" step="0.000001">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="number" class="form-control" id="maxDistance" placeholder="最大距离(米)" value="1000">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-primary w-100" onclick="searchNearbyDevices()">
+                                            <i class="bi bi-geo-alt"></i> 查询附近设备
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 设备表格 -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>设备ID</th>
+                                        <th>设备名称</th>
+                                        <th>类型</th>
+                                        <th>状态</th>
+                                        <th>位置</th>
+                                        <th>创建时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deviceTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备编辑模态框 -->
+    <div class="modal fade" id="deviceModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">添加设备</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="deviceForm">
+                        <input type="hidden" id="editDeviceId">
+                        <div class="mb-3">
+                            <label class="form-label">设备ID *</label>
+                            <input type="text" class="form-control" id="deviceId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">设备名称 *</label>
+                            <input type="text" class="form-control" id="deviceName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">设备类型 *</label>
+                                <select class="form-select" id="deviceType" required>
+                                    <option value="">请选择</option>
+                                    <option value="智能灯">智能灯</option>
+                                    <option value="温湿度传感器">温湿度传感器</option>
+                                    <option value="摄像头">摄像头</option>
+                                    <option value="智能门锁">智能门锁</option>
+                                    <option value="烟雾报警器">烟雾报警器</option>
+                                    <option value="智能插座">智能插座</option>
+                                    <option value="运动传感器">运动传感器</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">设备状态 *</label>
+                                <select class="form-select" id="deviceStatus" required>
+                                    <option value="online">在线</option>
+                                    <option value="offline">离线</option>
+                                    <option value="maintenance">维护中</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">经度 *</label>
+                                <input type="number" class="form-control" id="deviceLongitude" step="0.000001" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">纬度 *</label>
+                                <input type="number" class="form-control" id="deviceLatitude" step="0.000001" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">设备配置 (JSON格式)</label>
+                            <textarea class="form-control" id="deviceConfig" rows="4" placeholder='{"brightness": 80, "color": "white"}'></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveDevice()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息模态框 -->
+    <div class="modal fade" id="statsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">设备统计信息</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="statsContent">
+                    <p>加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/device.js"></script>
+</body>
+</html>
+
