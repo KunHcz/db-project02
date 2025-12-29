@@ -79,3 +79,4 @@ print('数据库初始化完成！');
 print('已创建集合: devices, device_logs');
 print('已创建索引: 地理位置索引、TTL索引、复合索引、全文搜索索引');
 
+

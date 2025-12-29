@@ -71,3 +71,4 @@ class DeviceLog:
         }
         return log
 
+
