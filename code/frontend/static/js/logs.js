@@ -1,9 +1,28 @@
-const API_BASE = '/api/logs';
-let currentPage = 1;
-let typeChart = null;
-let hourlyChart = null;
+/**
+ * 日志查询前端JavaScript模块
+ * 
+ * 本模块实现了日志查询页面的所有前端交互功能，包括：
+ * 1. 日志列表的加载和显示（支持分页）
+ * 2. 日志的增删操作
+ * 3. 日志筛选（设备ID、类型、时间范围）
+ * 4. 全文搜索（MongoDB文本索引）
+ * 5. 日志统计信息展示（使用Chart.js可视化）
+ * 
+ * API基础路径：/api/logs
+ * 
+ * 作者: 数据库系统课程项目小组
+ */
 
-// 页面加载时获取日志列表和统计信息
+// ==================== API配置 ====================
+const API_BASE = '/api/logs';
+
+// ==================== 全局变量 ====================
+let currentPage = 1;  // 当前页码
+let typeChart = null;  // 日志类型统计图表对象（Chart.js）
+let hourlyChart = null;  // 按小时统计图表对象（Chart.js）
+
+// ==================== 页面初始化 ====================
+// 页面加载完成后自动加载日志列表和统计信息
 document.addEventListener('DOMContentLoaded', function() {
     loadLogs();
     loadLogStats();
@@ -216,19 +235,40 @@ function resetFilters() {
     loadLogs(1);
 }
 
-// 全文搜索
+/**
+ * 全文搜索日志
+ * 
+ * 使用MongoDB的文本索引实现全文搜索功能。
+ * 这是MongoDB文档数据库的特色功能，可以在日志内容中搜索关键词。
+ * 
+ * 功能：
+ * 1. 获取搜索关键词
+ * 2. 调用全文搜索API
+ * 3. 显示搜索结果（按相关性排序）
+ * 4. 清空分页（全文搜索不支持分页）
+ * 
+ * MongoDB全文搜索原理：
+ * - 使用$text操作符进行全文搜索
+ * - 结果按相关性评分（textScore）排序
+ * - 需要在MongoDB中创建文本索引
+ */
 function searchLogs() {
+    // 获取搜索关键词
     const keyword = document.getElementById('searchKeyword').value;
     if (!keyword.trim()) {
         alert('请输入搜索关键词');
         return;
     }
     
+    // 调用全文搜索API
+    // encodeURIComponent: 对关键词进行URL编码，防止特殊字符导致URL错误
     fetch(`${API_BASE}/search?keyword=${encodeURIComponent(keyword)}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // 显示搜索结果（按相关性排序）
                 displayLogs(data.data);
+                // 清空分页（全文搜索不支持分页）
                 document.getElementById('pagination').innerHTML = '';
             } else {
                 alert('搜索失败: ' + data.error);
@@ -281,14 +321,27 @@ function loadLogStats() {
         });
 }
 
-// 更新图表
+/**
+ * 更新统计图表
+ * 
+ * 使用Chart.js库将MongoDB聚合查询的结果可视化。
+ * 包括两个图表：
+ * 1. 按类型统计（饼图/环形图）
+ * 2. 按小时统计（折线图，时间序列分析）
+ * 
+ * @param {Object} stats - 统计信息对象
+ * @param {Array} stats.by_type - 按类型统计结果
+ * @param {Array} stats.hourly - 按小时统计结果
+ */
 function updateCharts(stats) {
-    // 按类型统计图表
+    // ==================== 按类型统计图表（环形图） ====================
     const typeCtx = document.getElementById('typeChart').getContext('2d');
+    // 如果图表已存在，先销毁（避免重复创建）
     if (typeChart) {
         typeChart.destroy();
     }
     
+    // 将日志类型代码转换为中文标签
     const typeLabels = stats.by_type.map(item => {
         const typeMap = {
             'info': '信息',
@@ -298,25 +351,27 @@ function updateCharts(stats) {
         };
         return typeMap[item._id] || item._id;
     });
+    // 提取统计数据
     const typeData = stats.by_type.map(item => item.count);
     
+    // 创建环形图（doughnut chart）
     typeChart = new Chart(typeCtx, {
-        type: 'doughnut',
+        type: 'doughnut',  // 图表类型：环形图
         data: {
-            labels: typeLabels,
+            labels: typeLabels,  // 标签（日志类型）
             datasets: [{
-                data: typeData,
-                backgroundColor: [
-                    '#28a745',
-                    '#ffc107',
-                    '#dc3545',
-                    '#17a2b8'
+                data: typeData,  // 数据（数量）
+                backgroundColor: [  // 颜色配置
+                    '#28a745',  // 绿色（信息）
+                    '#ffc107',  // 黄色（警告）
+                    '#dc3545',  // 红色（错误）
+                    '#17a2b8'   // 蓝色（状态变更）
                 ]
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: true,
+            responsive: true,  // 响应式布局
+            maintainAspectRatio: true,  // 保持宽高比
             plugins: {
                 title: {
                     display: true,
@@ -326,28 +381,33 @@ function updateCharts(stats) {
         }
     });
     
-    // 按小时统计图表
+    // ==================== 按小时统计图表（折线图） ====================
     const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+    // 如果图表已存在，先销毁
     if (hourlyChart) {
         hourlyChart.destroy();
     }
     
+    // 格式化时间标签
+    // stats.hourly中的_id包含year、month、day、hour字段
     const hourlyLabels = stats.hourly.map(item => {
         const date = new Date(item._id.year, item._id.month - 1, item._id.day, item._id.hour);
         return date.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit' });
     });
+    // 提取每小时的数量
     const hourlyData = stats.hourly.map(item => item.count);
     
+    // 创建折线图（line chart）
     hourlyChart = new Chart(hourlyCtx, {
-        type: 'line',
+        type: 'line',  // 图表类型：折线图
         data: {
-            labels: hourlyLabels,
+            labels: hourlyLabels,  // X轴标签（时间）
             datasets: [{
                 label: '日志数量',
-                data: hourlyData,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                tension: 0.4
+                data: hourlyData,  // Y轴数据（数量）
+                borderColor: '#007bff',  // 线条颜色
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',  // 填充颜色（半透明）
+                tension: 0.4  // 曲线平滑度（0-1，0.4表示平滑曲线）
             }]
         },
         options: {
@@ -361,7 +421,7 @@ function updateCharts(stats) {
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true  // Y轴从0开始
                 }
             }
         }
